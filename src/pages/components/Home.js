@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/router";
 import { Button, TextField, Container, Typography } from "@mui/material";
 import { io } from "socket.io-client";
@@ -10,48 +10,8 @@ const socket = io("https://server-1-fkui.onrender.com", {
 
 export default function Home() {
   const [interests, setInterests] = useState("");
-  const [matchedUser, setMatchedUser] = useState(null);
+  const [matchedRoom, setMatchedRoom] = useState(null);
   const router = useRouter();
-  const localVideoRef = useRef(null);
-  const remoteVideoRef = useRef(null);
-  const peerConnection = useRef(null); // Initialize as null
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {  // Ensure it runs only in the browser
-      peerConnection.current = new RTCPeerConnection({
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-      });
-    }
-
-    socket.on("matched", (data) => {
-      setMatchedUser(data);
-      initiateCall();
-    });
-
-    socket.on("offer", async (offer) => {
-      if (!peerConnection.current) return;
-      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await peerConnection.current.createAnswer();
-      await peerConnection.current.setLocalDescription(answer);
-      socket.emit("answer", answer);
-    });
-
-    socket.on("answer", async (answer) => {
-      if (!peerConnection.current) return;
-      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
-    });
-
-    socket.on("candidate", async (candidate) => {
-      if (!peerConnection.current) return;
-      await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
-    });
-
-    return () => {
-      if (peerConnection.current) {
-        peerConnection.current.close();
-      }
-    };
-  }, []);
 
   const handleMatch = () => {
     if (interests.trim()) {
@@ -59,42 +19,21 @@ export default function Home() {
     }
   };
 
-  const initiateCall = async () => {
-    if (!peerConnection.current) return;
-
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    stream.getTracks().forEach(track => peerConnection.current.addTrack(track, stream));
-    localVideoRef.current.srcObject = stream;
-
-    peerConnection.current.ontrack = (event) => {
-      if (remoteVideoRef.current) {
-        let [remoteStream] = event.streams;
-        remoteVideoRef.current.srcObject = remoteStream;
-      }
-    };
-    
-
-    peerConnection.current.onicecandidate = (event) => {
-      if (event.candidate) {
-        socket.emit("candidate", event.candidate);
-      }
-    };
-
-    const offer = await peerConnection.current.createOffer();
-    await peerConnection.current.setLocalDescription(offer);
-    socket.emit("offer", offer);
-  };
+  // Listen for a match
+  socket.on("matched", (data) => {
+    setMatchedRoom(data.room);
+  });
 
   const startChat = () => {
-    if (matchedUser) {
-      router.push(`/chat?room=${matchedUser.room}`);
+    if (matchedRoom) {
+      router.push(`/chat?room=${matchedRoom}`);
     }
   };
 
   return (
     <Container maxWidth="sm" style={{ textAlign: "center", marginTop: "50px" }}>
       <Typography variant="h4" gutterBottom>
-        Find Someone with Similar Interests
+        Find Someone with Similar Interest
       </Typography>
       <TextField
         fullWidth
@@ -107,7 +46,7 @@ export default function Home() {
       <Button variant="contained" color="primary" onClick={handleMatch}>
         Find a Match
       </Button>
-      {matchedUser && (
+      {matchedRoom && (
         <>
           <Typography variant="h6" style={{ marginTop: "20px" }}>
             Match found! Click below to start chatting.
@@ -115,10 +54,6 @@ export default function Home() {
           <Button variant="contained" color="secondary" onClick={startChat}>
             Start Chat
           </Button>
-          <div style={{ marginTop: "20px" }}>
-            <video ref={localVideoRef} autoPlay playsInline style={{ width: "45%", marginRight: "10px" }}></video>
-            <video ref={remoteVideoRef} autoPlay playsInline style={{ width: "45%" }}></video>
-          </div>
         </>
       )}
     </Container>
