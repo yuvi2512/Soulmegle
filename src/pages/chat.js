@@ -53,23 +53,35 @@ export default function ChatRoom() {
   const startCall = async () => {
     setConnected(true);
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    stream.getTracks().forEach(track => peerConnection.current.addTrack(track, stream));
+  
+    // Set local video
     localVideoRef.current.srcObject = stream;
-
+  
+    // Add local stream tracks to peer connection
+    stream.getTracks().forEach((track) => {
+      peerConnection.current.addTrack(track, stream);
+    });
+  
     peerConnection.current.ontrack = (event) => {
-      remoteVideoRef.current.srcObject = event.streams[0];
+      if (remoteVideoRef.current) {
+        let [remoteStream] = event.streams;
+        remoteVideoRef.current.srcObject = remoteStream;
+      }
     };
-
+    
+    // Create offer
+    const offer = await peerConnection.current.createOffer();
+    await peerConnection.current.setLocalDescription(offer);
+    socket.emit("offer", { offer, room });
+  
+    // Handle ICE candidates
     peerConnection.current.onicecandidate = (event) => {
       if (event.candidate) {
         socket.emit("candidate", { candidate: event.candidate, room });
       }
     };
-
-    const offer = await peerConnection.current.createOffer();
-    await peerConnection.current.setLocalDescription(offer);
-    socket.emit("offer", { offer, room });
   };
+  
 
   return (
     <Container maxWidth="sm" style={{ textAlign: "center", marginTop: "50px" }}>

@@ -67,8 +67,12 @@ export default function Home() {
     localVideoRef.current.srcObject = stream;
 
     peerConnection.current.ontrack = (event) => {
-      remoteVideoRef.current.srcObject = event.streams[0];
+      if (remoteVideoRef.current) {
+        let [remoteStream] = event.streams;
+        remoteVideoRef.current.srcObject = remoteStream;
+      }
     };
+    
 
     peerConnection.current.onicecandidate = (event) => {
       if (event.candidate) {
