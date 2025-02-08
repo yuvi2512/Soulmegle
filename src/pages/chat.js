@@ -20,24 +20,39 @@ export default function ChatRoom() {
   useEffect(() => {
     if (!room) return;
 
-    // Initialize WebRTC connection
     peerConnection.current = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" }, // STUN (gets public IP)
+        {
+          urls: "turn:relay1.expressturn.com:3478", // Free public TURN server
+          username: "efreeze",
+          credential: "efreezeturn",
+        },
+        {
+          urls: "turn:turn.anyfirewall.com:443?transport=tcp", // Alternative TURN
+          credential: "webrtc",
+          username: "webrtc",
+        },
+      ],
     });
-
+    
     // When a remote track is received, update remote stream
     peerConnection.current.ontrack = (event) => {
       console.log("🔵 Remote track received!", event.streams[0]);
       setRemoteStream(event.streams[0]);
     };
 
-    // Handle ICE candidate exchange
     peerConnection.current.onicecandidate = (event) => {
       if (event.candidate) {
-        console.log("📤 Sending ICE candidate:", event.candidate);
-        socket.emit("candidate", { candidate: event.candidate, room });
+        console.log("📤 ICE Candidate:", event.candidate);
+        if (event.candidate.candidate.includes("relay")) {
+          socket.emit("candidate", { candidate: event.candidate, room });
+        } else {
+          console.warn("⛔ Ignoring non-relay candidate:", event.candidate);
+        }
       }
     };
+    
 
     // Join the chat room
     socket.emit("joinRoom", room);
