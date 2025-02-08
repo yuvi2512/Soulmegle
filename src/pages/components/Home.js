@@ -19,8 +19,8 @@ export default function Home() {
     }
   };
 
-  // Listen for a match
   socket.on("matched", (data) => {
+    console.log("✅ Matched with Room:", data.room);
     setMatchedRoom(data.room);
   });
 
@@ -33,7 +33,7 @@ export default function Home() {
   return (
     <Container maxWidth="sm" style={{ textAlign: "center", marginTop: "50px" }}>
       <Typography variant="h4" gutterBottom>
-        Find Someone with Similar Interest
+        Find Someone with Similar Interests
       </Typography>
       <TextField
         fullWidth
