@@ -44,14 +44,22 @@ export default function ChatRoom() {
 
     peerConnection.current.onicecandidate = (event) => {
       if (event.candidate) {
-        console.log("📤 ICE Candidate:", event.candidate);
-        if (event.candidate.candidate.includes("relay")) {
-          socket.emit("candidate", { candidate: event.candidate, room });
-        } else {
-          console.warn("⛔ Ignoring non-relay candidate:", event.candidate);
-        }
+        console.log("📤 Sending ICE Candidate:", event.candidate);
+        socket.emit("candidate", { candidate: event.candidate, room });
       }
     };
+    
+    socket.on("candidate", async ({ candidate }) => {
+      console.log("📥 Received ICE Candidate:", candidate);
+      if (candidate) {
+        try {
+          await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (error) {
+          console.error("⚠️ Error adding ICE Candidate:", error);
+        }
+      }
+    });
+    
     
 
     // Join the chat room
@@ -108,20 +116,28 @@ export default function ChatRoom() {
   const startCall = async () => {
     setConnected(true);
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-
+  
     // Set local video stream
     localVideoRef.current.srcObject = stream;
-
-    // Add local tracks to peer connection
+  
+    // Add tracks before creating an offer
     stream.getTracks().forEach((track) => {
       peerConnection.current.addTrack(track, stream);
     });
-
-    // Create and send an offer
+  
+    // Ensure stream is added on remote side too
+    peerConnection.current.ontrack = (event) => {
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = event.streams[0];
+      }
+    };
+  
+    // Create and send offer
     const offer = await peerConnection.current.createOffer();
     await peerConnection.current.setLocalDescription(offer);
     socket.emit("offer", { offer, room });
   };
+  
 
   return (
     <Container maxWidth="sm" style={{ textAlign: "center", marginTop: "50px" }}>
