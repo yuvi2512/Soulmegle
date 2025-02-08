@@ -3,9 +3,11 @@ import { useRouter } from "next/router";
 import { io } from "socket.io-client";
 import { Button, Container, Typography } from "@mui/material";
 
-const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000", {
-  path: "/api/socketio",
+const socket = io("https://server-1-fkui.onrender.com", {
+  path: "/socket.io",
+  transports: ["websocket"],
 });
+
 
 export default function ChatRoom() {
   const router = useRouter();
