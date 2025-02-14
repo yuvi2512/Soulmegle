@@ -15,7 +15,6 @@ export default function ChatRoom() {
   const remoteVideoRef = useRef(null);
   const peerConnection = useRef(null);
   const [connected, setConnected] = useState(false);
-  const [remoteStream, setRemoteStream] = useState(null);
 
   useEffect(() => {
     if (!room) return;
@@ -24,83 +23,49 @@ export default function ChatRoom() {
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
         {
-          urls: "turn:relay1.expressturn.com:3478",
-          username: "efreeze",
-          credential: "efreezeturn",
-        },
-        {
-          urls: "turn:turn.anyfirewall.com:443?transport=tcp",
-          credential: "webrtc",
-          username: "webrtc",
+          urls: "turn:openrelay.metered.ca:80",
+          username: "openrelayproject",
+          credential: "openrelayproject",
         },
       ],
     });
 
-    // Handle remote track
     peerConnection.current.ontrack = (event) => {
-      console.log("🔵 Remote track received!", event.streams[0]);
-      if (event.streams[0]) {
-        console.log("🟢 Remote tracks:", event.streams[0].getTracks());
-        setRemoteStream(event.streams[0]);
-      } else {
-        console.error("⚠️ No remote stream found in event:", event);
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = event.streams[0];
       }
     };
 
-    // Handle ICE candidates
     peerConnection.current.onicecandidate = (event) => {
       if (event.candidate) {
-        console.log("📤 Sending ICE Candidate:", event.candidate);
         socket.emit("candidate", { candidate: event.candidate, room });
-      } else {
-        console.log("✅ All ICE candidates have been sent.");
       }
     };
 
-    // Log PeerConnection state changes
-    peerConnection.current.onconnectionstatechange = () => {
-      console.log("🟢 PeerConnection state:", peerConnection.current.connectionState);
-    };
-
-    // Log ICE connection state changes
-    peerConnection.current.oniceconnectionstatechange = () => {
-      console.log("🟢 ICE connection state:", peerConnection.current.iceConnectionState);
-      if (peerConnection.current.iceConnectionState === "failed") {
-        console.error("⚠️ ICE connection failed!");
-      }
-    };
-
-    // Join room
     socket.emit("joinRoom", room);
 
-    // Handle offer
     socket.on("offer", async ({ offer }) => {
-      console.log("📩 Received Offer:", offer);
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      localVideoRef.current.srcObject = stream;
+      stream.getTracks().forEach((track) => peerConnection.current.addTrack(track, stream));
+
       await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
       const answer = await peerConnection.current.createAnswer();
       await peerConnection.current.setLocalDescription(answer);
       socket.emit("answer", { answer, room });
     });
 
-    // Handle answer
     socket.on("answer", async ({ answer }) => {
-      console.log("📩 Received Answer:", answer);
       await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
     });
 
-    // Handle ICE candidate
     socket.on("candidate", async ({ candidate }) => {
-      console.log("📥 Received ICE Candidate:", candidate);
-      try {
+      if (candidate) {
         await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch (error) {
-        console.error("⚠️ Error adding ICE Candidate:", error);
       }
     });
 
-    // Cleanup
     return () => {
-      console.log("❌ Leaving room:", room);
       socket.emit("leaveRoom", room);
       socket.disconnect();
       if (peerConnection.current) {
@@ -109,28 +74,18 @@ export default function ChatRoom() {
     };
   }, [room]);
 
-  useEffect(() => {
-    if (remoteStream && remoteVideoRef.current) {
-      console.log("🟢 Updating remote video element with stream:", remoteStream);
-      remoteVideoRef.current.srcObject = remoteStream;
-    }
-  }, [remoteStream]);
-
   const startCall = async () => {
     setConnected(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      console.log("🟢 Local stream obtained:", stream);
       localVideoRef.current.srcObject = stream;
-      stream.getTracks().forEach((track) => {
-        console.log("🟢 Adding track to peer connection:", track);
-        peerConnection.current.addTrack(track, stream);
-      });
+      stream.getTracks().forEach((track) => peerConnection.current.addTrack(track, stream));
+
       const offer = await peerConnection.current.createOffer();
       await peerConnection.current.setLocalDescription(offer);
       socket.emit("offer", { offer, room });
     } catch (error) {
-      console.error("⚠️ Error accessing media devices:", error);
+      console.error("Error accessing media devices:", error);
     }
   };
 
@@ -141,23 +96,12 @@ export default function ChatRoom() {
       </Typography>
       {!connected ? (
         <Button variant="contained" color="primary" onClick={startCall}>
-          Start Video Chat
+          Start Video
         </Button>
       ) : (
         <div style={{ marginTop: "20px" }}>
-          <video
-            ref={localVideoRef}
-            autoPlay
-            playsInline
-            muted
-            style={{ width: "45%", marginRight: "10px", backgroundColor: "black" }}
-          ></video>
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            style={{ width: "45%", backgroundColor: "black" }}
-          ></video>
+          <video ref={localVideoRef} autoPlay playsInline muted style={{ width: "45%", marginRight: "10px", backgroundColor: "black" }}></video>
+          <video ref={remoteVideoRef} autoPlay playsInline style={{ width: "45%", backgroundColor: "black" }}></video>
         </div>
       )}
     </Container>

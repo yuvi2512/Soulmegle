@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Button, TextField, Container, Typography } from "@mui/material";
 import { io } from "socket.io-client";
@@ -13,16 +13,21 @@ export default function Home() {
   const [matchedRoom, setMatchedRoom] = useState(null);
   const router = useRouter();
 
+  useEffect(() => {
+    socket.on("matched", (data) => {
+      setMatchedRoom(data.room);
+    });
+
+    return () => {
+      socket.off("matched");
+    };
+  }, []);
+
   const handleMatch = () => {
     if (interests.trim()) {
       socket.emit("findMatch", { interests });
     }
   };
-
-  socket.on("matched", (data) => {
-    console.log("✅ Matched with Room:", data.room);
-    setMatchedRoom(data.room);
-  });
 
   const startChat = () => {
     if (matchedRoom) {
