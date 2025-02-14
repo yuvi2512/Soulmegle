@@ -23,9 +23,9 @@ export default function ChatRoom() {
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
         {
-          urls: "turn:openrelay.metered.ca:80",
-          username: "openrelayproject",
-          credential: "openrelayproject",
+          urls: "turn:relay1.expressturn.com:3478",
+          username: "efvsd",
+          credential: "randompassword",
         },
       ],
     });
@@ -37,6 +37,7 @@ export default function ChatRoom() {
     };
 
     peerConnection.current.onicecandidate = (event) => {
+      console.log("📡 ICE Candidate Generated:", event.candidate);
       if (event.candidate) {
         socket.emit("candidate", { candidate: event.candidate, room });
       }
@@ -45,23 +46,35 @@ export default function ChatRoom() {
     socket.emit("joinRoom", room);
 
     socket.on("offer", async ({ offer }) => {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
       localVideoRef.current.srcObject = stream;
-      stream.getTracks().forEach((track) => peerConnection.current.addTrack(track, stream));
+      stream
+        .getTracks()
+        .forEach((track) => peerConnection.current.addTrack(track, stream));
 
-      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
+      await peerConnection.current.setRemoteDescription(
+        new RTCSessionDescription(offer)
+      );
       const answer = await peerConnection.current.createAnswer();
       await peerConnection.current.setLocalDescription(answer);
       socket.emit("answer", { answer, room });
     });
 
     socket.on("answer", async ({ answer }) => {
-      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
+      await peerConnection.current.setRemoteDescription(
+        new RTCSessionDescription(answer)
+      );
     });
 
     socket.on("candidate", async ({ candidate }) => {
+      console.log("✅ ICE Candidate Received:", candidate);
       if (candidate) {
-        await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+        await peerConnection.current.addIceCandidate(
+          new RTCIceCandidate(candidate)
+        );
       }
     });
 
@@ -77,9 +90,14 @@ export default function ChatRoom() {
   const startCall = async () => {
     setConnected(true);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
       localVideoRef.current.srcObject = stream;
-      stream.getTracks().forEach((track) => peerConnection.current.addTrack(track, stream));
+      stream
+        .getTracks()
+        .forEach((track) => peerConnection.current.addTrack(track, stream));
 
       const offer = await peerConnection.current.createOffer();
       await peerConnection.current.setLocalDescription(offer);
@@ -96,12 +114,27 @@ export default function ChatRoom() {
       </Typography>
       {!connected ? (
         <Button variant="contained" color="primary" onClick={startCall}>
-          Start Video
+          Start Video Chat
         </Button>
       ) : (
         <div style={{ marginTop: "20px" }}>
-          <video ref={localVideoRef} autoPlay playsInline muted style={{ width: "45%", marginRight: "10px", backgroundColor: "black" }}></video>
-          <video ref={remoteVideoRef} autoPlay playsInline style={{ width: "45%", backgroundColor: "black" }}></video>
+          <video
+            ref={localVideoRef}
+            autoPlay
+            playsInline
+            muted
+            style={{
+              width: "45%",
+              marginRight: "10px",
+              backgroundColor: "black",
+            }}
+          ></video>
+          <video
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            style={{ width: "45%", backgroundColor: "black" }}
+          ></video>
         </div>
       )}
     </Container>
