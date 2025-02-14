@@ -39,7 +39,11 @@ export default function ChatRoom() {
     // Handle remote track
     peerConnection.current.ontrack = (event) => {
       console.log("🔵 Remote track received!", event.streams[0]);
-      setRemoteStream(event.streams[0]);
+      if (event.streams[0]) {
+        setRemoteStream(event.streams[0]);
+      } else {
+        console.error("⚠️ No remote stream found in event:", event);
+      }
     };
 
     // Handle ICE candidates
@@ -93,6 +97,7 @@ export default function ChatRoom() {
 
   useEffect(() => {
     if (remoteStream && remoteVideoRef.current) {
+      console.log("🟢 Updating remote video element with stream:", remoteStream);
       remoteVideoRef.current.srcObject = remoteStream;
     }
   }, [remoteStream]);
@@ -101,6 +106,7 @@ export default function ChatRoom() {
     setConnected(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      console.log("🟢 Local stream obtained:", stream);
       localVideoRef.current.srcObject = stream;
       stream.getTracks().forEach((track) => {
         peerConnection.current.addTrack(track, stream);
@@ -120,7 +126,7 @@ export default function ChatRoom() {
       </Typography>
       {!connected ? (
         <Button variant="contained" color="primary" onClick={startCall}>
-          Start Video Chat
+          Start Video
         </Button>
       ) : (
         <div style={{ marginTop: "20px" }}>
