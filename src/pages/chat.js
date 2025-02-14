@@ -40,6 +40,7 @@ export default function ChatRoom() {
     peerConnection.current.ontrack = (event) => {
       console.log("🔵 Remote track received!", event.streams[0]);
       if (event.streams[0]) {
+        console.log("🟢 Remote tracks:", event.streams[0].getTracks());
         setRemoteStream(event.streams[0]);
       } else {
         console.error("⚠️ No remote stream found in event:", event);
@@ -53,6 +54,19 @@ export default function ChatRoom() {
         socket.emit("candidate", { candidate: event.candidate, room });
       } else {
         console.log("✅ All ICE candidates have been sent.");
+      }
+    };
+
+    // Log PeerConnection state changes
+    peerConnection.current.onconnectionstatechange = () => {
+      console.log("🟢 PeerConnection state:", peerConnection.current.connectionState);
+    };
+
+    // Log ICE connection state changes
+    peerConnection.current.oniceconnectionstatechange = () => {
+      console.log("🟢 ICE connection state:", peerConnection.current.iceConnectionState);
+      if (peerConnection.current.iceConnectionState === "failed") {
+        console.error("⚠️ ICE connection failed!");
       }
     };
 
@@ -109,6 +123,7 @@ export default function ChatRoom() {
       console.log("🟢 Local stream obtained:", stream);
       localVideoRef.current.srcObject = stream;
       stream.getTracks().forEach((track) => {
+        console.log("🟢 Adding track to peer connection:", track);
         peerConnection.current.addTrack(track, stream);
       });
       const offer = await peerConnection.current.createOffer();
@@ -126,7 +141,7 @@ export default function ChatRoom() {
       </Typography>
       {!connected ? (
         <Button variant="contained" color="primary" onClick={startCall}>
-          Start Video
+          Start Video Chat
         </Button>
       ) : (
         <div style={{ marginTop: "20px" }}>
