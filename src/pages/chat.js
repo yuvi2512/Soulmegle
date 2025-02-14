@@ -18,17 +18,25 @@ export default function ChatRoom() {
 
   useEffect(() => {
     if (!room) return;
-
-    peerConnection.current = new RTCPeerConnection({
+    
+     peerConnection.current = new RTCPeerConnection({
       iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
+        { urls: ["stun:bn-turn1.xirsys.com"] },
         {
-          urls: "turn:relay1.expressturn.com:3478",
-          username: "efvsd",
-          credential: "randompassword",
-        },
-      ],
+          username: "7wTP78zanJvYXwtMXxLOhNKcYhX3yBs58nDVhsP63OIx78rT2PeOE_32QtS90sXsAAAAAGevJYhZYXRpc2hKb3NoaQ==",
+          credential: "d45d173e-eac4-11ef-adda-0242ac140004",
+          urls: [
+            "turn:bn-turn1.xirsys.com:80?transport=udp",
+            "turn:bn-turn1.xirsys.com:3478?transport=udp",
+            "turn:bn-turn1.xirsys.com:80?transport=tcp",
+            "turn:bn-turn1.xirsys.com:3478?transport=tcp",
+            "turns:bn-turn1.xirsys.com:443?transport=tcp",
+            "turns:bn-turn1.xirsys.com:5349?transport=tcp"
+          ]
+        }
+      ]
     });
+    
 
     peerConnection.current.ontrack = (event) => {
       if (remoteVideoRef.current) {
